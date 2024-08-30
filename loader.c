@@ -65,7 +65,7 @@ void load_and_run_elf(char** exe) {
         }
         if (phdr->p_type == PT_LOAD) {
             Elf32_Phdr ph;
-            void *segment_memory = mmap(NULL, ph.p_memsz, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
+            void *segment_memory = mmap(phdri.p_vaddr, ph.p_memsz, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
                 if (segment_memory == MAP_FAILED) {
                     perror("Error allocating memory with mmap");
                     close(fd);
