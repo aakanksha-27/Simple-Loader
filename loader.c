@@ -20,7 +20,7 @@ void load_and_run_elf(char** exe) {
         exit 1;
     }
     if (read(fd, &ehdr, sizeof(ehdr)) != sizeof(ehdr)) {
-        perror("Error reading ELF header");
+        printf("Error reading ELF header");
         close(fd);
         exit 1;
     }
@@ -28,7 +28,7 @@ void load_and_run_elf(char** exe) {
     if (file_size < 0) {
         printf("Error seeking to end of file");
         close(fd);
-        exit 1;
+        exit (1);
     }
     
     lseek(fd, 0, SEEK_SET);
@@ -39,9 +39,18 @@ void load_and_run_elf(char** exe) {
         close(fd);
         exit (1) ;
     }
+    
     ssize_t file_read = read(fd, buffer, file_size);
+    
+    if (file_read != file_size) {
+    perror("Error reading file"); 
+    free(buffer); 
     close(fd);
-  
+    exit(1);
+    }
+    
+    ehdr = (Elf32_Ehdr *)buffer;
+    phdr = (Elf32_Phdr *)(buffer + ehdr->e_phoff);
     
   // 2. Iterate through the PHDR table and find the section of PT_LOAD
   //    type that contains the address of the entrypoint method in fib.c
