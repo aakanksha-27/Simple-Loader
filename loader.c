@@ -30,7 +30,7 @@ void load_and_run_elf(char** exe) {
         close(fd);
         exit (1);
     }
-    
+
     lseek(fd, 0, SEEK_SET);
     char *heap_memory = (char*)malloc(file_size);
 
@@ -39,31 +39,32 @@ void load_and_run_elf(char** exe) {
         close(fd);
         exit (1);
     }
-    
+
     ssize_t file_read = read(fd, heap_memory, file_size);
-    
+
     if (file_read != file_size) {
-        perror("Error reading file"); 
-        free(heap_memory); 
+        perror("Error reading file");
+        free(heap_memory);
         close(fd);
         exit(1);
     }
-    
-    ehdr = (Elf32_Ehdr *)buffer;
-    phdr = (Elf32_Phdr *)(buffer + ehdr->e_phoff);
-    
+
+    ehdr = (Elf32_Ehdr *)heap_memory;
+    phdr = (Elf32_Phdr *)(heap_memory + ehdr->e_phoff);
+
   // 2. Iterate through the PHDR table and find the section of PT_LOAD
   //    type that contains the address of the entrypoint method in fib.c
   // 3. Allocate memory of the size "p_memsz" using mmap function
   //    and then copy the segment content
-    lseek(fd, ehdr.e_phoff, SEEK_SET);
-    for (int i = 0; i < ehdr.e_phnum; i++) {
+    lseek(fd, ehdr->e_phoff, SEEK_SET);
+    for (int i = 0; i < ehdr->e_phnum; i++) {
         if (read(fd, &phdr, sizeof(phdr)) != sizeof(phdr)) {
             perror("Error reading Program Header");
             close(fd);
             exit (1);
         }
-        if (phdr.p_type == PT_LOAD) {
+        if (phdr->p_type == PT_LOAD) {
+            Elf32_Phdr ph;
             void *segment_memory = mmap(NULL, ph.p_memsz, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
                 if (segment_memory == MAP_FAILED) {
                     perror("Error allocating memory with mmap");
@@ -71,22 +72,22 @@ void load_and_run_elf(char** exe) {
                     exit (1);
                 }
 
-                if (lseek(fd, phdr.p_offset, SEEK_SET) == -1) {
+                if (lseek(fd, phdr->p_offset, SEEK_SET) == -1) {
                     perror("Error seeking to segment offset");
-                    munmap(segment_memory, phdr.p_memsz);
+                    munmap(segment_memory, phdr->p_memsz);
                     close(fd);
                     exit (1);
                 }
 
-                if (read(fd, segment_memory, phdr.p_filesz) != phdr.p_filesz) {
+                if (read(fd, segment_memory, phdr->p_filesz) != phdr->p_filesz) {
                     perror("Error reading segment content");
-                    munmap(segment_memory, phdr.p_memsz);
+                    munmap(segment_memory, phdr->p_memsz);
                     close(fd);
                     exit (1);
                 }
 
-                if (phdr.p_memsz > phdr.p_filesz) {
-                    memset(segment_memory + phdr.p_filesz, 0, phdr.p_memsz - phdr.p_filesz);
+                if (phdr->p_memsz > phdr->p_filesz) {
+                    memset(segment_memory + phdr->p_filesz, 0, phdr->p_memsz - phdr->p_filesz);
                 }
 
         }
