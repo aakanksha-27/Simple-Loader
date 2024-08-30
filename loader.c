@@ -52,7 +52,6 @@ void load_and_run_elf(char** exe) {
   // 6. Call the "_start" method and print the value returned from the "_start"
     printf("User _start return value = %d\n",result);
 }
-
 int main(int argc, char** argv)
 {
   if(argc != 2) {
@@ -61,8 +60,8 @@ int main(int argc, char** argv)
   }
   // 1. carry out necessary checks on the input ELF file
   // 2. passing it to the loader for carrying out the loading/execution
-  load_and_run_elf(argv);
+    load_and_run_elf(argv);
   // 3. invoke the cleanup routine inside the loader
-  loader_cleanup();
-  return 0;
+    loader_cleanup();
+    return 0;
 }
