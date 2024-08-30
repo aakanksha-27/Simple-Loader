@@ -17,12 +17,12 @@ void load_and_run_elf(char** exe) {
     fd = open(exe[1], O_RDONLY);
     if (fd == -1) {
         printf("Error in opening file");
-        exit 1;
+        exit (1);
     }
     if (read(fd, &ehdr, sizeof(ehdr)) != sizeof(ehdr)) {
         printf("Error reading ELF header");
         close(fd);
-        exit 1;
+        exit (1);
     }
     off_t file_size = lseek(fd, 0, SEEK_END);
     if (file_size < 0) {
@@ -32,21 +32,21 @@ void load_and_run_elf(char** exe) {
     }
     
     lseek(fd, 0, SEEK_SET);
-    char *buffer = (char *)malloc(file_size);
+    char *heap_memory = (char*)malloc(file_size);
 
-    if (buffer == NULL) {
+    if (heap_memory == NULL) {
         printf("Error during Memory allocation");
         close(fd);
-        exit (1) ;
+        exit (1);
     }
     
-    ssize_t file_read = read(fd, buffer, file_size);
+    ssize_t file_read = read(fd, heap_memory, file_size);
     
     if (file_read != file_size) {
-    perror("Error reading file"); 
-    free(buffer); 
-    close(fd);
-    exit(1);
+        perror("Error reading file"); 
+        free(heap_memory); 
+        close(fd);
+        exit(1);
     }
     
     ehdr = (Elf32_Ehdr *)buffer;
@@ -61,28 +61,28 @@ void load_and_run_elf(char** exe) {
         if (read(fd, &phdr, sizeof(phdr)) != sizeof(phdr)) {
             perror("Error reading Program Header");
             close(fd);
-            exit 1;
+            exit (1);
         }
         if (phdr.p_type == PT_LOAD) {
             void *segment_memory = mmap(NULL, ph.p_memsz, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
                 if (segment_memory == MAP_FAILED) {
                     perror("Error allocating memory with mmap");
                     close(fd);
-                    exit 1;
+                    exit (1);
                 }
 
                 if (lseek(fd, phdr.p_offset, SEEK_SET) == -1) {
                     perror("Error seeking to segment offset");
                     munmap(segment_memory, phdr.p_memsz);
                     close(fd);
-                    exit 1;
+                    exit (1);
                 }
 
                 if (read(fd, segment_memory, phdr.p_filesz) != phdr.p_filesz) {
                     perror("Error reading segment content");
                     munmap(segment_memory, phdr.p_memsz);
                     close(fd);
-                    exit 1;
+                    exit (1);
                 }
 
                 if (phdr.p_memsz > phdr.p_filesz) {
