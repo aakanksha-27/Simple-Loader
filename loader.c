@@ -28,7 +28,7 @@ void load_and_run_elf(char** exe) {
     if (file_size < 0) {
         printf("Error seeking to end of file");
         close(fd);
-        exit (1);
+        exit 1;
     }
     
     lseek(fd, 0, SEEK_SET);
@@ -47,6 +47,41 @@ void load_and_run_elf(char** exe) {
   //    type that contains the address of the entrypoint method in fib.c
   // 3. Allocate memory of the size "p_memsz" using mmap function
   //    and then copy the segment content
+    lseek(fd, ehdr.e_phoff, SEEK_SET);
+    for (int i = 0; i < ehdr.e_phnum; i++) {
+        if (read(fd, &phdr, sizeof(phdr)) != sizeof(phdr)) {
+            perror("Error reading Program Header");
+            close(fd);
+            exit 1;
+        }
+        if (phdr.p_type == PT_LOAD) {
+            void *segment_memory = mmap(NULL, ph.p_memsz, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
+                if (segment_memory == MAP_FAILED) {
+                    perror("Error allocating memory with mmap");
+                    close(fd);
+                    exit 1;
+                }
+
+                if (lseek(fd, phdr.p_offset, SEEK_SET) == -1) {
+                    perror("Error seeking to segment offset");
+                    munmap(segment_memory, phdr.p_memsz);
+                    close(fd);
+                    exit 1;
+                }
+
+                if (read(fd, segment_memory, phdr.p_filesz) != phdr.p_filesz) {
+                    perror("Error reading segment content");
+                    munmap(segment_memory, phdr.p_memsz);
+                    close(fd);
+                    exit 1;
+                }
+
+                if (phdr.p_memsz > phdr.p_filesz) {
+                    memset(segment_memory + phdr.p_filesz, 0, phdr.p_memsz - phdr.p_filesz);
+                }
+
+        }
+    }
   // 4. Navigate to the entrypoint address into the segment loaded in the memory in above step
     int (*_start)(void) = (int (*)(void))(ehdr->e_entry);
   // 5. Typecast the address to that of function pointer matching "_start" method in fib.c.
