@@ -12,15 +12,17 @@ void loader_cleanup() {
     close(fd);
 }
 
-/*
- * Load and run the ELF executable file
- */
 void load_and_run_elf(char** exe) {
   // 1. Load entire binary content into the memory from the ELF file.
     fd = open(exe[1], O_RDONLY);
-    if (fd < 0) {
+    if (fd == -1) {
         printf("Error in opening file");
-        exit (1);
+        exit 1;
+    }
+    if (read(fd, &ehdr, sizeof(ehdr)) != sizeof(ehdr)) {
+        perror("Error reading ELF header");
+        close(fd);
+        exit 1;
     }
     off_t file_size = lseek(fd, 0, SEEK_END);
     if (file_size < 0) {
