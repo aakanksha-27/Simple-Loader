@@ -15,13 +15,8 @@ void loader_cleanup() {
 void load_and_run_elf(char** exe) {
   // 1. Load entire binary content into the memory from the ELF file.
     fd = open(exe[1], O_RDONLY);
-    if (fd == -1) {
+    if (fd < 0) {
         printf("Error in opening file");
-        exit (1);
-    }
-    if (read(fd, &ehdr, sizeof(ehdr)) != sizeof(ehdr)) {
-        printf("Error reading ELF header");
-        close(fd);
         exit (1);
     }
     off_t file_size = lseek(fd, 0, SEEK_END);
@@ -30,8 +25,31 @@ void load_and_run_elf(char** exe) {
         close(fd);
         exit (1);
     }
-
     lseek(fd, 0, SEEK_SET);
+    ehdr = (Elf32_Ehdr *)malloc(sizeof(Elf32_Ehdr));
+    if (ehdr == NULL) {
+        perror("Memory allocation failed for ELF header");
+        close(fd);
+        exit(1);
+    }
+    if (read(fd, ehdr, sizeof(Elf32_Ehdr)) != sizeof(Elf32_Ehdr)) {
+        perror("Error reading ELF header");
+        close(fd);
+        exit (1);
+    }
+    lseek(fd, ehdr->e_phoff, SEEK_SET);
+    phdr = (Elf32_Phdr *)malloc(ehdr->e_phnum * sizeof(Elf32_Phdr));
+    if (phdr == NULL) {
+        perror("Memory allocation failed for program headers");
+        close(fd);
+        exit(1);
+    }
+    if (read(fd, phdr, ehdr->e_phnum * sizeof(Elf32_Phdr)) != ehdr->e_phnum * sizeof(Elf32_Phdr)) {
+        perror("Error reading program headers");
+        close(fd);
+        exit(1);
+    }
+    
     char *heap_memory = (char*)malloc(file_size);
 
     if (heap_memory == NULL) {
@@ -49,45 +67,41 @@ void load_and_run_elf(char** exe) {
         exit(1);
     }
 
-    ehdr = (Elf32_Ehdr *)heap_memory;
-    phdr = (Elf32_Phdr *)(heap_memory + ehdr->e_phoff);
-
   // 2. Iterate through the PHDR table and find the section of PT_LOAD
   //    type that contains the address of the entrypoint method in fib.c
   // 3. Allocate memory of the size "p_memsz" using mmap function
   //    and then copy the segment content
-    lseek(fd, ehdr->e_phoff, SEEK_SET);
+    
     for (int i = 0; i < ehdr->e_phnum; i++) {
         if (read(fd, &phdr, sizeof(phdr)) != sizeof(phdr)) {
             perror("Error reading Program Header");
             close(fd);
             exit (1);
         }
-        if (phdr->p_type == PT_LOAD) {
-            Elf32_Phdr ph;
-            void *segment_memory = mmap(phdri.p_vaddr, ph.p_memsz, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
+        if (phdr[i]->p_type == PT_LOAD) {
+            void *segment_memory = mmap((void*)phdr[i].p_vaddr, phdr[i].p_memsz, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
                 if (segment_memory == MAP_FAILED) {
                     perror("Error allocating memory with mmap");
                     close(fd);
                     exit (1);
                 }
-
-                if (lseek(fd, phdr->p_offset, SEEK_SET) == -1) {
+                lseek(fd, phdr[i].p_offset, SEEK_SET);
+                if (lseek(fd, phdr[i]->p_offset, SEEK_SET) < 0 ) {
                     perror("Error seeking to segment offset");
                     munmap(segment_memory, phdr->p_memsz);
                     close(fd);
                     exit (1);
                 }
 
-                if (read(fd, segment_memory, phdr->p_filesz) != phdr->p_filesz) {
+                if (read(fd, segment_memory, phdr[i]->p_filesz) != phdr[i]->p_filesz) {
                     perror("Error reading segment content");
                     munmap(segment_memory, phdr->p_memsz);
                     close(fd);
                     exit (1);
                 }
 
-                if (phdr->p_memsz > phdr->p_filesz) {
-                    memset(segment_memory + phdr->p_filesz, 0, phdr->p_memsz - phdr->p_filesz);
+                if (phdr[i]->p_memsz > phdr[i]->p_filesz) {
+                    memset(segment_memory + phdr[i].p_filesz, 0, phdr[i].p_memsz - phdr[i].p_filesz);
                 }
 
         }
