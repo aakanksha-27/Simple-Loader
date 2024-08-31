@@ -16,30 +16,31 @@ void load_and_run_elf(char** exe) {
   // 1. Load entire binary content into the memory from the ELF file.
     fd = open(exe[1], O_RDONLY);
     if (fd < 0) {
-        printf("Error in opening file");
+        perror("Error: opening file");
         exit (1);
     }
     
     ehdr = (Elf32_Ehdr *)malloc(sizeof(Elf32_Ehdr));
     if (ehdr == NULL) {
-        perror("Memory allocation failed for ELF header");
+        perror("Error: memory allocation for ELF header");
         close(fd);
         exit(1);
     }
     if (read(fd, ehdr, sizeof(Elf32_Ehdr)) != sizeof(Elf32_Ehdr)) {
-        perror("Error reading ELF header");
+        perror("Error: reading ELF header");
         close(fd);
         exit (1);
     }
+    
     lseek(fd, ehdr->e_phoff, SEEK_SET);
-    phdr = (Elf32_Phdr *)malloc(ehdr->e_phnum * sizeof(Elf32_Phdr));
+    phdr = (Elf32_Phdr *)malloc(ehdr->e_phnum * ehdr->e_phentsize);
     if (phdr == NULL) {
-        perror("Memory allocation failed for program headers");
+        perror("Error: memory allocation for program header");
         close(fd);
         exit(1);
     }
-    if (read(fd, phdr, ehdr->e_phnum * sizeof(Elf32_Phdr)) != ehdr->e_phnum * sizeof(Elf32_Phdr)) {
-        perror("Error reading program headers");
+    if (read(fd, phdr, ehdr->e_phnum * ehdr->e_phentsize) != ehdr->e_phnum * ehdr->e_phentsize) {
+        perror("Error: reading program header");
         close(fd);
         exit(1);
     }
@@ -51,29 +52,29 @@ void load_and_run_elf(char** exe) {
     
     for (int i = 0; i < ehdr->e_phnum; i++) {
         if (phdr[i].p_type == PT_LOAD) {
-            void *segment_memory = mmap((void*)phdr[i].p_vaddr, phdr[i].p_memsz, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
-                if (segment_memory == MAP_FAILED) {
-                    perror("Error allocating memory with mmap");
+            void *virtual_mem = mmap((void*)phdr[i].p_vaddr, phdr[i].p_memsz, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
+                if (virtual_mem == MAP_FAILED) {
+                    perror("Error: memory allocation with mmap");
                     close(fd);
                     exit (1);
                 }
                 lseek(fd, phdr[i].p_offset, SEEK_SET);
                 if (lseek(fd, phdr[i].p_offset, SEEK_SET) < 0 ) {
-                     perror("Error seeking to segment offset");
-                     munmap(segment_memory, phdr->p_memsz);
+                     perror("Error: seeking to entrypoint");
+                     munmap(virtual_mem, phdr->p_memsz);
                      close(fd);
                      exit (1);
                 }
 
-                if (read(fd, segment_memory, phdr[i].p_filesz) != phdr[i].p_filesz) {
-                    perror("Error reading segment content");
-                    munmap(segment_memory, phdr[i].p_memsz);
+                if (read(fd, virtual_mem, phdr[i].p_filesz) != phdr[i].p_filesz) {
+                    perror("Error: reading segment content");
+                    munmap(virtual_mem, phdr[i].p_memsz);
                     close(fd);
                     exit (1);
                 }
 
                 if (phdr[i].p_memsz > phdr[i].p_filesz) {
-                    memset(segment_memory + phdr[i].p_filesz, 0, phdr[i].p_memsz - phdr[i].p_filesz);
+                    memset(virtual_mem + phdr[i].p_filesz, 0, phdr[i].p_memsz - phdr[i].p_filesz);
                 }
 
         }
