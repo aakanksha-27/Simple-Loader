@@ -58,7 +58,7 @@ void load_and_run_elf(char** exe) {
                     exit (1);
                 }
                 lseek(fd, phdr[i].p_offset, SEEK_SET);
-                if (lseek(fd, phdr[i]->p_offset, SEEK_SET) < 0 ) {
+                if (lseek(fd, phdr[i].p_offset, SEEK_SET) < 0 ) {
                      perror("Error seeking to segment offset");
                      munmap(segment_memory, phdr->p_memsz);
                      close(fd);
