@@ -4,4 +4,4 @@ all:
 
 # Provide the command for cleanup
 clean:
-	@rm -f ../bin/launch *.o
+	@rm -f ../bin/launch 
