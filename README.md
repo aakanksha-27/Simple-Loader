@@ -29,4 +29,5 @@ LD_LIBRARY_PATH=./bin/ ./bin/launch ./test/fib
 Contributions:
 ---------
 Aakanksha (2023004) - loader_cleanup, finding the PT_LOAD section, memory allocation of and copying the segment content, setting remaining memory to 0, error handling, make files
+
 Palak Yadav (2023363) - loading binary content into the memory, navigating to the entrypoint address, typecasting the address, error handling, make files
