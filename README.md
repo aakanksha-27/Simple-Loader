@@ -1,5 +1,4 @@
-make
-
+Simple Loader
 
 -------
  LD_LIBRARY_PATH=./bin/ ./bin/launch ./test/fib
